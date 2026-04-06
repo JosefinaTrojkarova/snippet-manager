@@ -156,6 +156,23 @@ app.whenReady().then(() => {
     return true
   })
 
+  ipcMain.handle('select-image', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'] }]
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const filePath = result.filePaths[0]
+    const data = await fs.promises.readFile(filePath)
+    const ext = filePath.split('.').pop()?.toLowerCase() ?? 'png'
+    const mimeMap: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+      gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', avif: 'image/avif'
+    }
+    const mime = mimeMap[ext] ?? 'image/png'
+    return `data:${mime};base64,${data.toString('base64')}`
+  })
+
   createWindow()
 
   app.on('activate', function () {

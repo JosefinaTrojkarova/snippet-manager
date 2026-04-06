@@ -9,7 +9,8 @@ const api = {
   getNotes: (folderPath: string) => ipcRenderer.invoke('get-notes', folderPath),
   saveNote: (folderPath: string, filename: string, content: string) => ipcRenderer.invoke('save-note', folderPath, filename, content),
   renameNote: (folderPath: string, oldFilename: string, newFilename: string) => ipcRenderer.invoke('rename-note', folderPath, oldFilename, newFilename),
-  deleteNote: (folderPath: string, filename: string) => ipcRenderer.invoke('delete-note', folderPath, filename)
+  deleteNote: (folderPath: string, filename: string) => ipcRenderer.invoke('delete-note', folderPath, filename),
+  selectImage: (): Promise<string | null> => ipcRenderer.invoke('select-image')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

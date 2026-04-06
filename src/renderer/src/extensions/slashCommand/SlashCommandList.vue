@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 
 const props = defineProps<{
   items: any[]
@@ -7,9 +7,27 @@ const props = defineProps<{
 }>()
 
 const selectedIndex = ref(0)
+const listRef = ref<HTMLElement | null>(null)
 
 watch(() => props.items, () => {
   selectedIndex.value = 0
+})
+
+watch(selectedIndex, () => {
+  nextTick(() => {
+    const list = listRef.value
+    if (!list) return
+    const selected = list.children[selectedIndex.value] as HTMLElement | undefined
+    if (!selected) return
+    const padding = parseFloat(getComputedStyle(list).paddingTop)
+    const itemTop = selected.offsetTop
+    const itemBottom = itemTop + selected.offsetHeight
+    if (itemTop < list.scrollTop + padding) {
+      list.scrollTop = itemTop - padding
+    } else if (itemBottom > list.scrollTop + list.clientHeight - padding) {
+      list.scrollTop = itemBottom - list.clientHeight + padding
+    }
+  })
 })
 
 function onKeyDown({ event }: { event: KeyboardEvent }) {
@@ -53,13 +71,14 @@ defineExpose({
 </script>
 
 <template>
-  <div class="slash-command-list glass">
+  <div ref="listRef" class="slash-command-list glass">
     <template v-if="items.length">
       <button
         v-for="(item, index) in items"
         :key="index"
         class="command-item"
         :class="{ 'is-selected': index === selectedIndex }"
+        @mousedown.prevent
         @click="selectItem(index)"
       >
         <component :is="item.icon" v-if="item.icon" :size="16" class="command-icon" />

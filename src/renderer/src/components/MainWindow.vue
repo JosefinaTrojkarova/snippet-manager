@@ -7,6 +7,7 @@ import { Markdown } from 'tiptap-markdown'
 import Placeholder from '@tiptap/extension-placeholder'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import Image from '@tiptap/extension-image'
 import { SlashCommand, renderItems, getSuggestionItems } from '../extensions/slashCommand/slashCommand'
 import 'tippy.js/dist/tippy.css'
 const props = defineProps<{ folderPath: string }>()
@@ -224,7 +225,8 @@ const editor = useEditor({
     Markdown,
     Placeholder.configure({ placeholder: 'Start typing your markdown...' }),
     TaskList,
-    TaskItem.configure({ nested: true }),
+    TaskItem.configure({ nested: true, HTMLAttributes: { 'data-type': 'taskItem' } }),
+    Image.configure({ inline: false, allowBase64: true }),
     SlashCommand.configure({
       suggestion: {
         items: getSuggestionItems,
@@ -303,6 +305,22 @@ function getTitle(content: string, filename: string) {
 function getSidebarTitle(content: string, filename: string) {
   const t = getTitle(content, filename)
   return t || 'Untitled note'
+}
+
+function handleImageDrop(event: DragEvent) {
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) return
+  const file = files[0]
+  if (!file.type.startsWith('image/')) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const dataUrl = e.target?.result as string
+    if (dataUrl && editor.value) {
+      editor.value.chain().focus().setImage({ src: dataUrl }).run()
+    }
+  }
+  reader.readAsDataURL(file)
 }
 </script>
 
@@ -392,7 +410,12 @@ function getSidebarTitle(content: string, filename: string) {
             placeholder="Untitled note"
             spellcheck="false"
           />
-          <editor-content :editor="editor" class="body-editor animate-fade-in delay-100" />
+          <editor-content
+            :editor="editor"
+            class="body-editor animate-fade-in delay-100"
+            @drop.prevent="handleImageDrop"
+            @dragover.prevent
+          />
       </div>
       
       <div v-else class="empty-state">
@@ -715,10 +738,7 @@ function getSidebarTitle(content: string, filename: string) {
 
 .editor-content {
   flex: 1;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
 }
 
 .title-input {
@@ -733,6 +753,7 @@ function getSidebarTitle(content: string, filename: string) {
   background: transparent;
   border: none;
   outline: none;
+  box-sizing: border-box;
 }
 
 .title-input::placeholder {
@@ -741,13 +762,11 @@ function getSidebarTitle(content: string, filename: string) {
 }
 
 .body-editor {
-  flex: 1;
   width: 100%;
-  overflow-y: auto;
 }
 
 .body-editor :deep(.tiptap) {
-  min-height: 100%;
+  min-height: 60vh;
   padding: 1rem 2rem 2rem 2rem;
   font-family: inherit;
   font-size: 1.05rem;
@@ -792,6 +811,7 @@ function getSidebarTitle(content: string, filename: string) {
 .body-editor :deep(.tiptap li p) {
   margin-bottom: 0;
   margin-top: 0;
+  min-height: 1.5rem;
 }
 
 .body-editor :deep(.tiptap li > ul),
@@ -806,32 +826,109 @@ function getSidebarTitle(content: string, filename: string) {
 }
 
 .body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"]) {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
 
 .body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
   flex-shrink: 0;
+  margin-right: 0.5rem;
   user-select: none;
-  margin-top: 0.2rem;
+  pointer-events: none;
 }
 
-.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > div) {
-  flex: 1;
-  min-height: 1.5rem;
-}
-
-.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div) {
-  text-decoration: line-through;
-  opacity: 0.5;
-}
-
-.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] input[type="checkbox"]) {
-  margin: 0;
-  width: 1.15em;
-  height: 1.15em;
+/* Invisible native input sits on top, handles click events */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"]) {
+  position: absolute;
+  inset: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  opacity: 0;
   cursor: pointer;
+  pointer-events: auto;
+  margin: 0;
+}
+
+/* Span is the visual checkbox */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label > span) {
+  position: relative;
+  width: 1rem;
+  height: 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* Hover — forward via the sibling input's :hover */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"]:hover + span) {
+  border-color: var(--muted-foreground);
+}
+
+/* Checked box fill + pop */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"]:checked + span) {
+  background: var(--foreground);
+  border-color: var(--foreground);
+  animation: checkbox-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Checkmark — absolutely centered, springs in/out */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label > span::after) {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.28rem;
+  height: 0.5rem;
+  border: 2px solid transparent;
+  border-top: none;
+  border-left: none;
+  transform: translate(-50%, -58%) rotate(45deg) scale(0);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.12s ease;
+}
+
+/* Checkmark visible when checked */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"]:checked + span::after) {
+  border-color: var(--background);
+  transform: translate(-50%, -58%) rotate(45deg) scale(1);
+}
+
+/* Content div */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > div) {
+  flex: 1 1 auto;
+  cursor: text;
+  transition: opacity 0.25s ease 0.08s;
+}
+
+/* Checked — fade the text */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div) {
+  opacity: 0.4;
+}
+
+/* Paragraph inside — animated strikethrough via text-decoration-color */
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > div p) {
+  text-decoration: line-through;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 0.22s ease 0.06s;
+}
+
+.body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div p) {
+  text-decoration-color: currentColor;
+}
+
+@keyframes checkbox-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.82); }
+  100% { transform: scale(1); }
 }
 
 .body-editor :deep(.tiptap code) {
@@ -853,6 +950,27 @@ function getSidebarTitle(content: string, filename: string) {
 .body-editor :deep(.tiptap pre code) {
   background: transparent;
   padding: 0;
+}
+
+.body-editor :deep(.tiptap hr) {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border) 20%, var(--border) 80%, transparent);
+  margin: 2rem 0;
+}
+
+.body-editor :deep(.tiptap blockquote) {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1.25rem;
+  border-left: 2px solid var(--foreground);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 6px 6px 0;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.body-editor :deep(.tiptap blockquote p) {
+  margin: 0;
 }
 
 .empty-state {
