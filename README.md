@@ -11,6 +11,8 @@ A clean, minimal, local-first markdown note editor built with Electron and Vue 3
 - **Image support** — drag-and-drop or insert via `/Image`
 - **Local only** — all data stays on your machine in plain Markdown files
 
+> **Note:** Snippets is developed and tested on macOS only. Windows and Linux builds are provided as-is and have not been tested.
+
 ## Requirements
 
 - Node.js 18+
