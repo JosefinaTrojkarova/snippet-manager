@@ -1,0 +1,178 @@
+import { app, shell, BrowserWindow, ipcMain, dialog, Menu } from 'electron'
+import { join } from 'path'
+import * as fs from 'fs'
+import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import icon from '../../resources/icon.png?asset'
+
+function createWindow(): void {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    show: false,
+    backgroundColor: '#09090b', // Shadcn dark background
+    autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 16, y: 12 },
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  mainWindow.on('ready-to-show', () => {
+    mainWindow.show()
+  })
+
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url)
+    return { action: 'deny' }
+  })
+
+  // HMR for renderer base on electron-vite cli.
+  // Load the remote URL for development or the local html file for production.
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.whenReady().then(() => {
+  // Set app user model id for windows
+  electronApp.setAppUserModelId('com.electron')
+
+  if (process.platform === 'darwin') {
+    const template: any = [
+      {
+        label: app.name,
+        submenu: [
+          { role: 'about' },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' }
+        ]
+      },
+      {
+        label: 'Edit',
+        submenu: [
+          { role: 'undo' },
+          { role: 'redo' },
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'pasteAndMatchStyle' },
+          { role: 'delete' },
+          { role: 'selectAll' }
+        ]
+      }
+    ]
+    const menu = Menu.buildFromTemplate(template)
+    Menu.setApplicationMenu(menu)
+  }
+
+  // Default open or close DevTools by F12 in development
+  // and ignore CommandOrControl + R in production.
+  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window)
+  })
+
+  // IPC Configuration State
+  const CONFIG_FILE = join(app.getPath('userData'), 'config.json')
+
+  ipcMain.handle('get-config', () => {
+    try {
+      const data = fs.readFileSync(CONFIG_FILE, 'utf-8')
+      return JSON.parse(data)
+    } catch {
+      return { notesDir: null }
+    }
+  })
+
+  ipcMain.handle('save-config', (_, config) => {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2))
+  })
+
+  ipcMain.handle('select-folder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory']
+    })
+    return result.canceled ? null : result.filePaths[0]
+  })
+
+  // IPC Notes File System
+  ipcMain.handle('get-notes', async (_, folderPath: string) => {
+    if (!folderPath || !fs.existsSync(folderPath)) return []
+    const files = await fs.promises.readdir(folderPath)
+    const notes: any[] = []
+    
+    for (const file of files) {
+      if (file.endsWith('.md')) {
+        const fullPath = join(folderPath, file)
+        const stat = await fs.promises.stat(fullPath)
+        const content = await fs.promises.readFile(fullPath, 'utf-8')
+        notes.push({
+          filename: file,
+          content,
+          updatedAt: stat.mtimeMs
+        })
+      }
+    }
+    return notes.sort((a, b) => b.updatedAt - a.updatedAt)
+  })
+
+  ipcMain.handle('save-note', async (_, folderPath: string, filename: string, content: string) => {
+    const fullPath = join(folderPath, filename)
+    await fs.promises.writeFile(fullPath, content, 'utf-8')
+    return true
+  })
+
+  ipcMain.handle('rename-note', async (_, folderPath: string, oldFilename: string, newFilename: string) => {
+    if (oldFilename === newFilename) return true;
+    const oldPath = join(folderPath, oldFilename)
+    const newPath = join(folderPath, newFilename)
+    if (fs.existsSync(oldPath)) {
+      await fs.promises.rename(oldPath, newPath)
+    }
+    return true
+  })
+
+  ipcMain.handle('delete-note', async (_, folderPath: string, filename: string) => {
+    const fullPath = join(folderPath, filename)
+    if (fs.existsSync(fullPath)) {
+      await fs.promises.unlink(fullPath)
+    }
+    return true
+  })
+
+  createWindow()
+
+  app.on('activate', function () {
+    // On macOS it's common to re-create a window in the app when the
+    // dock icon is clicked and there are no other windows open.
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+})
+
+// Quit when all windows are closed, except on macOS. There, it's common
+// for applications and their menu bar to stay active until the user quits
+// explicitly with Cmd + Q.
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})
+
+// In this file you can include the rest of your app's specific main process
+// code. You can also put them in separate files and require them here.
