@@ -8,7 +8,6 @@ const configuredFolder = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    // @ts-ignore
     const config = await window.api.getConfig()
     if (config && config.notesDir) {
       configuredFolder.value = config.notesDir
@@ -21,19 +20,16 @@ onMounted(async () => {
 })
 
 async function handleFolderSelected(folder: string) {
-  // @ts-ignore
   await window.api.saveConfig({ notesDir: folder })
   configuredFolder.value = folder
 }
 
 async function handleFolderChanged(folder: string) {
-  // @ts-ignore
   await window.api.saveConfig({ notesDir: folder })
   configuredFolder.value = folder
 }
 
 async function handleResetOnboarding() {
-  // @ts-ignore
   await window.api.saveConfig({ notesDir: null })
   configuredFolder.value = null
 }

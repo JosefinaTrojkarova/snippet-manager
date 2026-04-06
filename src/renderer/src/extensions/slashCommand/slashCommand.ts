@@ -78,7 +78,6 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
       icon: LucideImage,
       command: ({ editor, range }: any) => {
         editor.chain().focus().deleteRange(range).run()
-        // @ts-ignore
         window.api.selectImage().then((dataUrl: string | null) => {
           if (dataUrl) {
             editor.chain().focus().setImage({ src: dataUrl }).run()

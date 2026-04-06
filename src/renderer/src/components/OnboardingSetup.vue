@@ -7,7 +7,6 @@ const emit = defineEmits(['folder-selected'])
 const selectedFolder = ref<string | null>(null)
 const isSelecting = ref(false)
 
-// --- Animation state ---
 const titleText = ref('')
 const bodyLines = ref<string[]>([''])
 const showSlashMenu = ref(false)
@@ -120,7 +119,6 @@ onUnmounted(() => {
 async function pickFolder() {
   if (isSelecting.value) return
   isSelecting.value = true
-  // @ts-ignore
   const folder = await window.api.selectFolder()
   if (folder) selectedFolder.value = folder
   isSelecting.value = false
@@ -134,11 +132,9 @@ function continueSetup() {
 <template>
   <div class="onboarding">
 
-    <!-- Left: animated mock editor -->
     <div class="preview-pane">
       <div class="editor-mock" :style="{ opacity: mockOpacity }">
 
-        <!-- Fake window chrome -->
         <div class="mock-topbar">
           <div class="mock-traffic">
             <span class="tl red"></span>
@@ -148,7 +144,6 @@ function continueSetup() {
           <span class="mock-tab">Meeting Notes</span>
         </div>
 
-        <!-- Fake sidebar strip -->
         <div class="mock-layout">
           <div class="mock-sidebar">
             <div class="mock-sidebar-item active">Meeting Notes</div>
@@ -156,7 +151,6 @@ function continueSetup() {
             <div class="mock-sidebar-item">Ideas</div>
           </div>
 
-          <!-- Fake editor -->
           <div class="mock-editor" :style="{ position: 'relative' }">
             <div class="mock-title">
               {{ titleText }}<span
@@ -175,7 +169,6 @@ function continueSetup() {
               </div>
             </div>
 
-            <!-- Slash command dropdown -->
             <Transition name="slash">
               <div v-if="showSlashMenu" class="slash-dropdown">
                 <div
@@ -192,7 +185,6 @@ function continueSetup() {
       </div>
     </div>
 
-    <!-- Right: welcome copy + CTA -->
     <div class="welcome-pane">
       <div class="welcome-content">
 
@@ -252,8 +244,6 @@ function continueSetup() {
 </template>
 
 <style scoped>
-/* ── Layout ──────────────────────────────────────────────────────── */
-
 .onboarding {
   display: flex;
   width: 100vw;
@@ -280,8 +270,6 @@ function continueSetup() {
   padding: 2.5rem 2.5rem 2.5rem 2rem;
   border-left: 1px solid var(--border);
 }
-
-/* ── Mock editor ────────────────────────────────────────────────── */
 
 .editor-mock {
   width: 100%;
@@ -335,7 +323,6 @@ function continueSetup() {
   height: 260px;
 }
 
-/* Fake sidebar */
 .mock-sidebar {
   width: 130px;
   border-right: 1px solid var(--border);
@@ -360,7 +347,6 @@ function continueSetup() {
   color: var(--foreground);
 }
 
-/* Fake editor */
 .mock-editor {
   flex: 1;
   padding: 1.25rem 1.25rem 1rem;
@@ -430,8 +416,6 @@ function continueSetup() {
 .slash-enter-from   { opacity: 0; transform: translateY(-6px); }
 .slash-leave-to     { opacity: 0; }
 
-/* ── Welcome copy ────────────────────────────────────────────────── */
-
 .welcome-content {
   width: 100%;
   max-width: 300px;
@@ -494,8 +478,6 @@ function continueSetup() {
   padding: 0.05rem 0.35rem;
   color: var(--foreground);
 }
-
-/* ── CTA ─────────────────────────────────────────────────────────── */
 
 .cta {
   display: flex;
@@ -574,12 +556,8 @@ function continueSetup() {
   transform: translateY(-1px);
 }
 
-/* ── Transitions ─────────────────────────────────────────────────── */
-
 .rise-enter-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .rise-enter-from   { opacity: 0; transform: translateY(8px); }
-
-/* ── Keyframes ───────────────────────────────────────────────────── */
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(12px); }

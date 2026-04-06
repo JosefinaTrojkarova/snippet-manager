@@ -16,7 +16,6 @@ const emit = defineEmits<{
   resetOnboarding: []
 }>()
 
-// @ts-ignore
 const platform: string = window.api?.platform ?? 'web'
 
 type Note = { filename: string; content: string; updatedAt: number }
@@ -28,7 +27,6 @@ const openTabs = ref<Note[]>([])
 const showSidebar = ref(true)
 
 async function fetchNotes() {
-  // @ts-ignore
   notes.value = await window.api.getNotes(props.folderPath)
   if (openTabs.value.length > 0) {
     openTabs.value = openTabs.value.map(t => notes.value.find(n => n.filename === t.filename)).filter(Boolean) as Note[]
@@ -105,21 +103,11 @@ async function saveActiveNote() {
       }
       
       if (!isNewUnsaved) {
-        // @ts-ignore
-        if (window.api.renameNote) {
-          // @ts-ignore
-          await window.api.renameNote(props.folderPath, oldFilename, newFilename)
-        } else {
-          // @ts-ignore
-          await window.api.saveNote(props.folderPath, newFilename, activeNote.value.content)
-          // @ts-ignore
-          await window.api.deleteNote(props.folderPath, oldFilename)
-        }
+        await window.api.renameNote(props.folderPath, oldFilename, newFilename)
       }
       activeNote.value.filename = newFilename
     }
 
-    // @ts-ignore
     await window.api.saveNote(props.folderPath, newFilename, activeNote.value.content)
     
     if (!isNewUnsaved) {
@@ -164,7 +152,6 @@ function selectTab(tab: Note) {
 
 async function deleteNote(note: Note, e: Event) {
   e.stopPropagation()
-  // @ts-ignore
   await window.api.deleteNote(props.folderPath, note.filename)
   
   const tabIdx = openTabs.value.findIndex(t => t.filename === note.filename)
@@ -324,7 +311,6 @@ function getSidebarTitle(content: string, filename: string) {
 }
 
 async function changeFolder() {
-  // @ts-ignore
   const folder = await window.api.selectFolder()
   if (folder) {
     emit('folderChanged', folder)
@@ -341,7 +327,6 @@ function handleTitleEnter() {
   if (!hasContent) {
     editor.value.commands.focus('start')
   } else {
-    // Insert an empty paragraph before existing content, cursor lands in it
     editor.value.chain()
       .focus('start')
       .splitBlock()
@@ -369,20 +354,16 @@ function handleImageDrop(event: DragEvent) {
 
 <template>
   <div class="window-wrapper animate-fade-in">
-    <!-- Top Bar -->
     <nav class="topbar" :class="`platform-${platform}`">
-      <!-- Left sidebar toggle and traffic lights section -->
       <div class="topbar-sidebar-section" :class="{ 'is-open': showSidebar }">
-        <!-- Traffic lights spacer (Mac only) -->
+        <!-- macOS traffic lights sit here; spacer reserves their width -->
         <div v-if="platform === 'darwin'" class="mac-controls-spacer"></div>
         <div class="topbar-spacer"></div>
-        <!-- Left sidebar toggle -->
         <button class="topbar-btn" @click="showSidebar = !showSidebar" title="Toggle Sidebar">
           <PanelLeft :size="16" />
         </button>
       </div>
 
-      <!-- Tabs -->
       <div class="tabs-scroll-area">
         <div 
           v-for="tab in openTabs"
@@ -401,14 +382,12 @@ function handleImageDrop(event: DragEvent) {
         </button>
       </div>
 
-      <!-- Right: Windows native controls spacer, or small spacer otherwise -->
+      <!-- Windows native minimize/maximize/close buttons live in this space -->
       <div v-if="platform === 'win32'" class="win-controls-spacer"></div>
       <div v-else class="topbar-right-spacer"></div>
     </nav>
 
-    <!-- App Body -->
     <div class="app-body">
-      <!-- Sidebar -->
       <aside class="sidebar glass" :class="{ 'is-closed': !showSidebar }">
         <div class="sidebar-content">
           <div class="sidebar-header">
@@ -454,7 +433,6 @@ function handleImageDrop(event: DragEvent) {
         </div>
       </aside>
 
-      <!-- Main Editor Area -->
       <main class="editor-area">
         <div v-if="activeNote" class="editor-content">
           <input 
@@ -512,12 +490,10 @@ function handleImageDrop(event: DragEvent) {
   -webkit-app-region: drag;
 }
 
-/* Mac closed: traffic lights spacer + button */
 .platform-darwin .topbar-sidebar-section {
   width: 122px;
 }
 
-/* All platforms open: full sidebar width */
 .topbar-sidebar-section.is-open {
   width: 280px;
 }
@@ -985,7 +961,6 @@ function handleImageDrop(event: DragEvent) {
   border-color: var(--muted-foreground);
 }
 
-/* Checked box fill + pop */
 .body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"]:checked + span) {
   background: var(--foreground);
   border-color: var(--foreground);
@@ -1007,20 +982,17 @@ function handleImageDrop(event: DragEvent) {
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.12s ease;
 }
 
-/* Checkmark visible when checked */
 .body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > label input[type="checkbox"]:checked + span::after) {
   border-color: var(--background);
   transform: translate(-50%, -58%) rotate(45deg) scale(1);
 }
 
-/* Content div */
 .body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"] > div) {
   flex: 1 1 auto;
   cursor: text;
   transition: opacity 0.25s ease 0.08s;
 }
 
-/* Checked — fade the text */
 .body-editor :deep(.tiptap ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div) {
   opacity: 0.4;
 }
