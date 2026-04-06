@@ -25,13 +25,25 @@ async function handleFolderSelected(folder: string) {
   await window.api.saveConfig({ notesDir: folder })
   configuredFolder.value = folder
 }
+
+async function handleFolderChanged(folder: string) {
+  // @ts-ignore
+  await window.api.saveConfig({ notesDir: folder })
+  configuredFolder.value = folder
+}
+
+async function handleResetOnboarding() {
+  // @ts-ignore
+  await window.api.saveConfig({ notesDir: null })
+  configuredFolder.value = null
+}
 </script>
 
 <template>
   <div v-if="!isLoaded" class="loading-state">
   </div>
   <OnboardingSetup v-else-if="!configuredFolder" @folder-selected="handleFolderSelected" />
-  <MainWindow v-else :folder-path="configuredFolder" />
+  <MainWindow v-else :folder-path="configuredFolder" @folder-changed="handleFolderChanged" @reset-onboarding="handleResetOnboarding" />
 </template>
 
 <style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { Plus, Trash2, FileText, PanelLeft, X } from 'lucide-vue-next'
+import { Plus, Trash2, FileText, PanelLeft, X, FolderOpen, RotateCcw } from 'lucide-vue-next'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
@@ -11,6 +11,10 @@ import Image from '@tiptap/extension-image'
 import { SlashCommand, renderItems, getSuggestionItems } from '../extensions/slashCommand/slashCommand'
 import 'tippy.js/dist/tippy.css'
 const props = defineProps<{ folderPath: string }>()
+const emit = defineEmits<{
+  folderChanged: [folder: string]
+  resetOnboarding: []
+}>()
 
 // @ts-ignore
 const platform: string = window.api?.platform ?? 'web'
@@ -251,6 +255,15 @@ watch(() => activeNote.value?.filename, () => {
   }
 })
 
+watch(() => props.folderPath, () => {
+  openTabs.value = []
+  activeNote.value = null
+  if (editor.value) {
+    editor.value.commands.setContent('')
+  }
+  fetchNotes()
+})
+
 function selectSidebarNote(note: Note) {
   flushSave()
   const existingTabIdx = openTabs.value.findIndex(t => t.filename === note.filename)
@@ -308,6 +321,33 @@ function getTitle(content: string, filename: string) {
 function getSidebarTitle(content: string, filename: string) {
   const t = getTitle(content, filename)
   return t || 'Untitled note'
+}
+
+async function changeFolder() {
+  // @ts-ignore
+  const folder = await window.api.selectFolder()
+  if (folder) {
+    emit('folderChanged', folder)
+  }
+}
+
+function resetOnboarding() {
+  emit('resetOnboarding')
+}
+
+function handleTitleEnter() {
+  if (!editor.value) return
+  const hasContent = !!documentBody.value.trim()
+  if (!hasContent) {
+    editor.value.commands.focus('start')
+  } else {
+    // Insert an empty paragraph before existing content, cursor lands in it
+    editor.value.chain()
+      .focus('start')
+      .splitBlock()
+      .setTextSelection(1)
+      .run()
+  }
 }
 
 function handleImageDrop(event: DragEvent) {
@@ -400,6 +440,17 @@ function handleImageDrop(event: DragEvent) {
             <p>No notes yet</p>
           </div>
         </div>
+
+        <div class="sidebar-footer">
+          <button class="sidebar-footer-btn" @click="changeFolder" title="Change notes folder">
+            <FolderOpen :size="15" />
+            <span>Change Folder</span>
+          </button>
+          <button class="sidebar-footer-btn" @click="resetOnboarding" title="Re-run setup">
+            <RotateCcw :size="15" />
+            <span>Setup</span>
+          </button>
+        </div>
         </div>
       </aside>
 
@@ -410,6 +461,7 @@ function handleImageDrop(event: DragEvent) {
             ref="titleInput"
             v-model="documentTitle" 
             @input="triggerSave"
+            @keydown.enter.prevent="handleTitleEnter"
             class="title-input animate-fade-in"
             placeholder="Untitled note"
             spellcheck="false"
@@ -741,6 +793,36 @@ function handleImageDrop(event: DragEvent) {
 .delete-btn:hover {
   color: var(--destructive);
   background: rgba(127, 29, 29, 0.2);
+}
+
+.sidebar-footer {
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-shrink: 0;
+}
+
+.sidebar-footer-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.sidebar-footer-btn:not(:last-child) {
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-footer-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
 }
 
 .empty-list {
