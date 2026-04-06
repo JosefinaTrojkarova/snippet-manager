@@ -2,7 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
-const api = {
+const api: Record<string, any> = {
+  platform: process.platform,
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (config: any) => ipcRenderer.invoke('save-config', config),
   selectFolder: () => ipcRenderer.invoke('select-folder'),

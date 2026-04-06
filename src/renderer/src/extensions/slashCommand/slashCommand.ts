@@ -5,7 +5,7 @@ import tippy from 'tippy.js'
 import SlashCommandList from './SlashCommandList.vue'
 import {
   Heading1, Heading2, Heading3,
-  List, ListOrdered, ListTodo, Quote, Code, Minus, ImageIcon
+  List, ListOrdered, ListTodo, Quote, Code, Minus, Image as LucideImage
 } from 'lucide-vue-next'
 
 export const getSuggestionItems = ({ query }: { query: string }) => {
@@ -75,7 +75,7 @@ export const getSuggestionItems = ({ query }: { query: string }) => {
     },
     {
       title: 'Image',
-      icon: ImageIcon,
+      icon: LucideImage,
       command: ({ editor, range }: any) => {
         editor.chain().focus().deleteRange(range).run()
         // @ts-ignore

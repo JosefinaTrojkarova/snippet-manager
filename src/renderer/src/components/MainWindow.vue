@@ -12,6 +12,9 @@ import { SlashCommand, renderItems, getSuggestionItems } from '../extensions/sla
 import 'tippy.js/dist/tippy.css'
 const props = defineProps<{ folderPath: string }>()
 
+// @ts-ignore
+const platform: string = window.api?.platform ?? 'web'
+
 type Note = { filename: string; content: string; updatedAt: number }
 
 const notes = ref<Note[]>([])
@@ -226,7 +229,7 @@ const editor = useEditor({
     Placeholder.configure({ placeholder: 'Start typing your markdown...' }),
     TaskList,
     TaskItem.configure({ nested: true, HTMLAttributes: { 'data-type': 'taskItem' } }),
-    Image.configure({ inline: false, allowBase64: true }),
+    Image.configure({ inline: false }),
     SlashCommand.configure({
       suggestion: {
         items: getSuggestionItems,
@@ -327,11 +330,11 @@ function handleImageDrop(event: DragEvent) {
 <template>
   <div class="window-wrapper animate-fade-in">
     <!-- Top Bar -->
-    <nav class="topbar">
+    <nav class="topbar" :class="`platform-${platform}`">
       <!-- Left sidebar toggle and traffic lights section -->
       <div class="topbar-sidebar-section" :class="{ 'is-open': showSidebar }">
-        <!-- Traffic lights spacer -->
-        <div class="mac-controls-spacer"></div>
+        <!-- Traffic lights spacer (Mac only) -->
+        <div v-if="platform === 'darwin'" class="mac-controls-spacer"></div>
         <div class="topbar-spacer"></div>
         <!-- Left sidebar toggle -->
         <button class="topbar-btn" @click="showSidebar = !showSidebar" title="Toggle Sidebar">
@@ -358,8 +361,9 @@ function handleImageDrop(event: DragEvent) {
         </button>
       </div>
 
-      <!-- Right spacer (no icons) -->
-      <div class="topbar-right-spacer"></div>
+      <!-- Right: Windows native controls spacer, or small spacer otherwise -->
+      <div v-if="platform === 'win32'" class="win-controls-spacer"></div>
+      <div v-else class="topbar-right-spacer"></div>
     </nav>
 
     <!-- App Body -->
@@ -448,7 +452,7 @@ function handleImageDrop(event: DragEvent) {
   display: flex;
   align-items: center;
   height: 100%;
-  width: 114px; /* fits traffic lights + button margins exactly when closed */
+  width: 38px; /* web/linux/win closed: just the button */
   flex-shrink: 0;
   transition: width 0.2s;
   box-sizing: border-box;
@@ -456,12 +460,18 @@ function handleImageDrop(event: DragEvent) {
   -webkit-app-region: drag;
 }
 
+/* Mac closed: traffic lights spacer + button */
+.platform-darwin .topbar-sidebar-section {
+  width: 122px;
+}
+
+/* All platforms open: full sidebar width */
 .topbar-sidebar-section.is-open {
   width: 280px;
 }
 
 .mac-controls-spacer {
-  width: 72px;
+  width: 84px;
   height: 100%;
   flex-shrink: 0;
 }
@@ -472,22 +482,21 @@ function handleImageDrop(event: DragEvent) {
 
 .topbar-btn {
   -webkit-app-region: no-drag;
-  padding: 0.35rem;
   background: transparent;
   border: none;
   color: var(--muted-foreground);
   display: flex;
   align-items: center;
-  border-radius: var(--radius);
+  justify-content: center;
+  height: 100%;
+  width: 38px;
+  flex-shrink: 0;
   cursor: pointer;
-  margin-right: 6px;
-  margin-left: 8px;
-  margin-top: 1px;
   transition: all 0.2s;
 }
 
 .topbar-btn:hover {
-  background: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--foreground);
 }
 
@@ -509,7 +518,7 @@ function handleImageDrop(event: DragEvent) {
 .tab {
   -webkit-app-region: no-drag;
   height: 38px;
-  padding: 0 8px 0 12px;
+  padding: 0 0 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -568,13 +577,17 @@ function handleImageDrop(event: DragEvent) {
 .close-tab-btn {
   background: transparent;
   border: none;
-  padding: 2px;
-  border-radius: 4px;
+  padding: 0;
   color: inherit;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 38px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .tab:hover .close-tab-btn, .tab.active .close-tab-btn {
@@ -588,6 +601,15 @@ function handleImageDrop(event: DragEvent) {
 
 .topbar-right-spacer {
   width: 20px;
+  flex-shrink: 0;
+}
+
+/* Leaves room for Windows native minimize/maximize/close buttons */
+.win-controls-spacer {
+  width: 138px;
+  height: 100%;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
 }
 
 .app-body {
@@ -639,42 +661,42 @@ function handleImageDrop(event: DragEvent) {
 
 .icon-btn {
   background: transparent;
+  border: none;
   color: var(--muted-foreground);
   padding: 0.4rem;
-  border-radius: var(--radius);
   display: flex;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .icon-btn:hover {
-  background: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--foreground);
 }
 
 .notes-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0.5rem;
 }
 
 .note-item {
   padding: 0.75rem 1rem;
-  border-radius: var(--radius);
-  margin-bottom: 2px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid transparent;
+  color: var(--muted-foreground);
   transition: all 0.2s;
 }
 
 .note-item:hover {
-  background: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
 }
 
 .note-item.active {
-  background: var(--accent);
-  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--foreground);
 }
 
 .note-info {
@@ -699,10 +721,17 @@ function handleImageDrop(event: DragEvent) {
 
 .delete-btn {
   background: transparent;
+  border: none;
   color: var(--muted-foreground);
   opacity: 0;
-  padding: 0.4rem;
-  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 32px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
 }
 
 .note-item:hover .delete-btn {
@@ -971,6 +1000,19 @@ function handleImageDrop(event: DragEvent) {
 
 .body-editor :deep(.tiptap blockquote p) {
   margin: 0;
+}
+
+.body-editor :deep(.tiptap img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.25rem 0;
+  border: 1px solid var(--border);
+}
+
+.body-editor :deep(.tiptap img.ProseMirror-selectednode) {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
 }
 
 .empty-state {
