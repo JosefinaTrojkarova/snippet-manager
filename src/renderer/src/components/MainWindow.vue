@@ -8,6 +8,8 @@ import Placeholder from '@tiptap/extension-placeholder'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
+import { Extension } from '@tiptap/core'
 import { SlashCommand, renderItems, getSuggestionItems } from '../extensions/slashCommand/slashCommand'
 import 'tippy.js/dist/tippy.css'
 const props = defineProps<{ folderPath: string }>()
@@ -216,11 +218,20 @@ const editor = useEditor({
   content: documentBody.value,
   extensions: [
     StarterKit,
-    Markdown,
+    Markdown.configure({ transformPastedText: true }),
     Placeholder.configure({ placeholder: 'Start typing your markdown...' }),
     TaskList,
     TaskItem.configure({ nested: true, HTMLAttributes: { 'data-type': 'taskItem' } }),
     Image.configure({ inline: false }),
+    Link.configure({ openOnClick: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
+    Extension.create({
+      name: 'linkShortcut',
+      addKeyboardShortcuts() {
+        return {
+          'Mod-k': () => { insertLink(); return true }
+        }
+      }
+    }),
     SlashCommand.configure({
       suggestion: {
         items: getSuggestionItems,
@@ -333,6 +344,18 @@ function handleTitleEnter() {
       .setTextSelection(1)
       .run()
   }
+}
+
+function insertLink() {
+  if (!editor.value) return
+  const existingHref = editor.value.getAttributes('link').href ?? ''
+  const url = window.prompt('URL', existingHref)
+  if (url === null) return
+  if (url === '') {
+    editor.value.chain().focus().extendMarkRange('link').unsetLink().run()
+    return
+  }
+  editor.value.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
 }
 
 function handleImageDrop(event: DragEvent) {
@@ -1054,6 +1077,42 @@ function handleImageDrop(event: DragEvent) {
 
 .body-editor :deep(.tiptap blockquote p) {
   margin: 0;
+}
+
+.body-editor :deep(.tiptap a) {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+  transition: text-decoration-color 0.15s ease;
+  position: relative;
+}
+
+.body-editor :deep(.tiptap a:hover) {
+  text-decoration-color: rgba(255, 255, 255, 0.8);
+}
+
+.body-editor :deep(.tiptap a:hover::after) {
+  content: attr(href);
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-style: normal;
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 60ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 100;
 }
 
 .body-editor :deep(.tiptap img) {
